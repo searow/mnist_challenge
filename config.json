@@ -1,6 +1,6 @@
 {
   "_comment": "===== MODEL CONFIGURATION =====",
-  "model_dir": "models/a_very_robust_model",
+  "model_dir": "models/adv_trained",
 
   "_comment": "===== TRAINING CONFIGURATION =====",
   "random_seed": 4557077,
@@ -9,6 +9,7 @@
   "num_summary_steps": 100,
   "num_checkpoint_steps": 300,
   "training_batch_size": 50,
+  "top_grads": 5,
 
   "_comment": "===== EVAL CONFIGURATION =====",
   "num_eval_examples": 10000,
