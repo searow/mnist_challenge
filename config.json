@@ -15,6 +15,7 @@
   "num_eval_examples": 10000,
   "eval_batch_size": 200,
   "eval_on_cpu": true,
+  "delete_attacks": "false",
 
   "_comment": "=====ADVERSARIAL EXAMPLES CONFIGURATION=====",
   "epsilon": 0.3,
@@ -22,5 +23,5 @@
   "a": 0.01,
   "random_start": true,
   "loss_func": "xent",
-  "store_adv_path": "attack.npy"
+  "save_dir": "attacks"
 }

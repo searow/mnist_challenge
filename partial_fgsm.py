@@ -10,6 +10,7 @@ from __future__ import print_function
 import tensorflow as tf
 import numpy as np
 from pgd_attack import LinfPGDAttack
+from run_attack import run_attack
 
 
 class PartialFgsmAttack(LinfPGDAttack):
@@ -53,14 +54,24 @@ if __name__ == '__main__':
   import sys
   import math
   import tensorflow as tf
+  import datetime
+  import pathlib
 
   from tensorflow.examples.tutorials.mnist import input_data
 
   from model import Model
 
+  # Timestamp for unique logging.
+  timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+
   # Command line args, use to override config.json inputs.
   flags = tf.app.flags
+  flags.DEFINE_string('model_dir', None, 'Where the trained model is stored.')
   flags.DEFINE_integer('top_grads', None, 'Number of top grads to threshold')
+  flags.DEFINE_integer('k', None, 'How many training steps to take')
+  flags.DEFINE_integer('a', None, 'Fixed training step size')
+  flags.DEFINE_string('loss_func', None, 'The loss function to lose (?)')
+  flags.DEFINE_boolean('delete_attacks', False, 'Delete attack files')
   FLAGS = tf.app.flags.FLAGS
 
   with open('config.json') as config_file:
@@ -68,26 +79,64 @@ if __name__ == '__main__':
 
   # Config import.
   top_grads = config['top_grads']
+  epsilon = config['epsilon']
+  k = config['k']
+  a = config['a']
+  random_start = config['random_start']
+  loss_func = config['loss_func']
+  model_dir = config['model_dir']
+  delete_attacks = config['delete_attacks']
+  save_dir = config['save_dir']
 
-  model_file = tf.train.latest_checkpoint(config['model_dir'])
+  # Custom flag parsing, override anything in config for parameterization.
+  if FLAGS.model_dir:
+    model_dir = FLAGS.top_grads
+  if FLAGS.top_grads:
+    top_grads = FLAGS.top_grads
+  if FLAGS.k:
+    k = FLAGS.k
+  if FLAGS.a:
+    a = FLAGS.a
+  if FLAGS.loss_func:
+    loss_func = FLAGS.loss_func
+  if FLAGS.delete_attacks:
+    delete_attacks = FLAGS.delete_attacks
+
+  # Create output path directory.
+  pathlib.Path(save_dir).mkdir(parents=True, exist_ok=True)
+
+  # Create the unique name for the save file.
+  model_name = config['model_dir'].split('/')[1]
+  params = {'model': model_name,
+            'top_grads': top_grads,
+            'epsilon': epsilon,
+            'k': k,
+            'a': a,
+            'random_start': random_start,
+            'loss_func': loss_func}
+  sorted_items = sorted(params.items(), key=lambda x: x[0])
+  items = [str(v) for k, v in sorted_items]
+  k_v_items = ['{}:{}'.format(k, v) for k, v in sorted_items]
+  full_items = '-'.join(items)
+  adv_path = '{}/{}-{}-attack.npy'.format(save_dir, timestamp, full_items)
+  y_pred_path = '{}/{}-{}-ypred.npy'.format(save_dir, timestamp, full_items)
+  summary_path = '{}/{}-{}-summary.txt'.format(save_dir, timestamp, full_items)
+
+  model_file = tf.train.latest_checkpoint(model_dir)
   if model_file is None:
     print('No model found')
     sys.exit()
 
   model = Model()
   attack = PartialFgsmAttack(model,
-                             config['epsilon'],
-                             config['k'],
-                             config['a'],
-                             config['random_start'],
-                             config['loss_func'])
+                             epsilon,
+                             k,
+                             a,
+                             random_start,
+                             loss_func)
   saver = tf.train.Saver()
 
   mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
-
-  # Custom flag parsing, override anything in config for parameterization.
-  if FLAGS.top_grads:
-    top_grads = FLAGS.top_grads
 
   with tf.Session() as sess:
     # Restore the checkpoint
@@ -100,12 +149,13 @@ if __name__ == '__main__':
 
     x_adv = [] # adv accumulator
 
-    print('Iterating over {} batches'.format(num_batches))
+    # print('Iterating over {} batches'.format(num_batches))
+    print('Generating adversarial examples: {}'.format(adv_path))
 
     for ibatch in range(num_batches):
       bstart = ibatch * eval_batch_size
       bend = min(bstart + eval_batch_size, num_eval_examples)
-      print('batch size: {}'.format(bend - bstart))
+      # print('batch size: {}'.format(bend - bstart))
 
       x_batch = mnist.test.images[bstart:bend, :]
       y_batch = mnist.test.labels[bstart:bend]
@@ -114,8 +164,18 @@ if __name__ == '__main__':
 
       x_adv.append(x_batch_adv)
 
-    print('Storing examples')
-    path = config['store_adv_path']
+    # print('Storing examples')
     x_adv = np.concatenate(x_adv, axis=0)
-    np.save(path, x_adv)
-    print('Examples stored in {}'.format(path))
+    if not delete_attacks:
+      np.save(adv_path, x_adv)
+    # print('Examples stored in {}'.format(adv_path))
+
+    print('Evaluating results: {}'.format(y_pred_path))
+    eval_results_path = None if delete_attacks else y_pred_path
+    accuracy = run_attack(model_file, x_adv, epsilon, eval_results_path)
+    print('Accuracy: {}'.format(accuracy))
+
+    with open(summary_path, 'w') as writefile:
+      for line in k_v_items:
+        writefile.write(line + '\n')
+      writefile.write('accuracy: {}'.format(accuracy))

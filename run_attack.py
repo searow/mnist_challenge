@@ -18,7 +18,7 @@ import numpy as np
 
 from model import Model
 
-def run_attack(checkpoint, x_adv, epsilon):
+def run_attack(checkpoint, x_adv, epsilon, save_path=''):
   mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 
   model = Model()
@@ -63,10 +63,11 @@ def run_attack(checkpoint, x_adv, epsilon):
 
   accuracy = total_corr / num_eval_examples
 
-  print('Accuracy: {:.2f}%'.format(100.0 * accuracy))
   y_pred = np.concatenate(y_pred, axis=0)
-  np.save('pred.npy', y_pred)
-  print('Output saved at pred.npy')
+  if save_path:
+    save_file = save_path + '-pred.npy'
+    np.save(save_file, y_pred)
+  return accuracy
 
 if __name__ == '__main__':
   import json
