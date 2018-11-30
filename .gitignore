@@ -1,5 +1,6 @@
 # data files
 MNIST_DATA
+MNIST_data
 
 # attack files
 *.npy
