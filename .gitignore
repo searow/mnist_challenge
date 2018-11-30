@@ -1,3 +1,5 @@
+*.swp
+
 # data files
 MNIST_DATA
 MNIST_data
