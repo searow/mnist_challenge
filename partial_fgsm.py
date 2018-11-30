@@ -1,3 +1,24 @@
+# Running new attacks:
+# 1. Make sure the base attack is runnable by running pgd_attack.py. This
+#    only generates the attack result npy file that has the images that
+#    should be evaluated with run_attack.py.
+# 2. Run this file which runs a default configuration in config.py.
+# 3. To run parametric version, run this file but specify flag parameters
+#    on the command line using --<flagname>=<flag>. See the flags we
+#    parse in the main function. They'll override anything that is in
+#    config.py but continue to use the ones not specified.
+# 4. Summary results (params + final accuracy) are saved in the attack
+#    directory specified in config file.
+
+# Modifying the iterative attack.
+# - Just look at the perturb method. It has the gradients in grad, the
+#   original images as a batch in x_nat, the correct classification in y,
+#   and top_k as a parameter (can add more if needed).
+# - The method needs to return the perturbed image (x by default).
+# - Don't worry about bounds checking on the L-infinity distance. The clip
+#   function handles it all, so just perturb as much as you want at the 
+#   result will always be a valid image.
+
 """
 Implementation of attack methods. Running this file as a program will
 apply the attack to the model specified by the config file and store
@@ -18,6 +39,7 @@ class PartialFgsmAttack(LinfPGDAttack):
   def perturb(self, x_nat, y, sess, top_k):
     """Given a set of examples (x_nat, y), returns a set of adversarial
        examples within epsilon of x_nat in l_infinity norm."""
+    # x_nat is shape (batch_size, 784), 784 because the images are 28x28.
     if self.rand:
       x = x_nat + np.random.uniform(-self.epsilon, self.epsilon, x_nat.shape)
     else:
