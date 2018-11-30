@@ -12,6 +12,7 @@ import numpy as np
 from pgd_attack import LinfPGDAttack
 from run_attack import run_attack
 
+tf.logging.set_verbosity(tf.logging.ERROR)
 
 class PartialFgsmAttack(LinfPGDAttack):
   def perturb(self, x_nat, y, sess, top_k):
@@ -138,44 +139,48 @@ if __name__ == '__main__':
 
   mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 
-  with tf.Session() as sess:
-    # Restore the checkpoint
-    saver.restore(sess, model_file)
+  #with tf.Session() as sess:
+  sess = tf.Session()
+  # Restore the checkpoint
+  saver.restore(sess, model_file)
 
-    # Iterate over the samples batch-by-batch
-    num_eval_examples = config['num_eval_examples']
-    eval_batch_size = config['eval_batch_size']
-    num_batches = int(math.ceil(num_eval_examples / eval_batch_size))
+  # Iterate over the samples batch-by-batch
+  num_eval_examples = config['num_eval_examples']
+  eval_batch_size = config['eval_batch_size']
+  num_batches = int(math.ceil(num_eval_examples / eval_batch_size))
 
-    x_adv = [] # adv accumulator
+  x_adv = [] # adv accumulator
 
-    # print('Iterating over {} batches'.format(num_batches))
-    print('Generating adversarial examples: {}'.format(adv_path))
+  # print('Iterating over {} batches'.format(num_batches))
+  print('Generating adversarial examples: {}'.format(adv_path))
 
-    for ibatch in range(num_batches):
-      bstart = ibatch * eval_batch_size
-      bend = min(bstart + eval_batch_size, num_eval_examples)
-      # print('batch size: {}'.format(bend - bstart))
+  for ibatch in range(num_batches):
+    bstart = ibatch * eval_batch_size
+    bend = min(bstart + eval_batch_size, num_eval_examples)
+    # print('batch size: {}'.format(bend - bstart))
 
-      x_batch = mnist.test.images[bstart:bend, :]
-      y_batch = mnist.test.labels[bstart:bend]
+    x_batch = mnist.test.images[bstart:bend, :]
+    y_batch = mnist.test.labels[bstart:bend]
 
-      x_batch_adv = attack.perturb(x_batch, y_batch, sess, top_grads)
+    x_batch_adv = attack.perturb(x_batch, y_batch, sess, top_grads)
 
-      x_adv.append(x_batch_adv)
+    x_adv.append(x_batch_adv)
 
-    # print('Storing examples')
-    x_adv = np.concatenate(x_adv, axis=0)
-    if not delete_attacks:
-      np.save(adv_path, x_adv)
-    # print('Examples stored in {}'.format(adv_path))
+  # print('Storing examples')
+  x_adv = np.concatenate(x_adv, axis=0)
+  if not delete_attacks:
+    print('saving')
+    np.save(adv_path, x_adv)
+  # print('Examples stored in {}'.format(adv_path))
+  sess.close()
+  tf.reset_default_graph()
 
-    print('Evaluating results: {}'.format(y_pred_path))
-    eval_results_path = None if delete_attacks else y_pred_path
-    accuracy = run_attack(model_file, x_adv, epsilon, eval_results_path)
-    print('Accuracy: {}'.format(accuracy))
+  print('Evaluating results: {}'.format(y_pred_path))
+  eval_results_path = None if delete_attacks else y_pred_path
+  accuracy = run_attack(model_file, x_adv, epsilon, eval_results_path)
+  print('Accuracy: {}'.format(accuracy))
 
-    with open(summary_path, 'w') as writefile:
-      for line in k_v_items:
-        writefile.write(line + '\n')
-      writefile.write('accuracy: {}'.format(accuracy))
+  with open(summary_path, 'w') as writefile:
+    for line in k_v_items:
+      writefile.write(line + '\n')
+    writefile.write('accuracy: {}'.format(accuracy))
