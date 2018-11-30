@@ -52,15 +52,23 @@ if __name__ == '__main__':
   import json
   import sys
   import math
+  import tensorflow as tf
 
   from tensorflow.examples.tutorials.mnist import input_data
 
   from model import Model
 
+  # Command line args, use to override config.json inputs.
+  flags = tf.app.flags
+  flags.DEFINE_integer('top_grads', None, 'Number of top grads to threshold')
+  FLAGS = tf.app.flags.FLAGS
+
   with open('config.json') as config_file:
     config = json.load(config_file)
 
+  # Config import.
   top_grads = config['top_grads']
+
   model_file = tf.train.latest_checkpoint(config['model_dir'])
   if model_file is None:
     print('No model found')
@@ -76,6 +84,10 @@ if __name__ == '__main__':
   saver = tf.train.Saver()
 
   mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
+
+  # Custom flag parsing, override anything in config for parameterization.
+  if FLAGS.top_grads:
+    top_grads = FLAGS.top_grads
 
   with tf.Session() as sess:
     # Restore the checkpoint
