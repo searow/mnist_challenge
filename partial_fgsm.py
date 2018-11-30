@@ -70,7 +70,7 @@ if __name__ == '__main__':
   flags.DEFINE_string('model_dir', None, 'Where the trained model is stored.')
   flags.DEFINE_integer('top_grads', None, 'Number of top grads to threshold')
   flags.DEFINE_integer('k', None, 'How many training steps to take')
-  flags.DEFINE_integer('a', None, 'Fixed training step size')
+  flags.DEFINE_float('a', None, 'Fixed training step size')
   flags.DEFINE_string('loss_func', None, 'The loss function to lose (?)')
   flags.DEFINE_boolean('delete_attacks', False, 'Delete attack files')
   FLAGS = tf.app.flags.FLAGS
