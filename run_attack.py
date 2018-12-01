@@ -91,4 +91,4 @@ if __name__ == '__main__':
                                                               np.amin(x_adv),
                                                               np.amax(x_adv)))
   else:
-    run_attack(checkpoint, x_adv, config['epsilon'])
+    print("Accuracy = {}".format(run_attack(checkpoint, x_adv, config['epsilon'])))
