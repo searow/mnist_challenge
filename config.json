@@ -9,7 +9,19 @@
   "num_summary_steps": 100,
   "num_checkpoint_steps": 300,
   "training_batch_size": 50,
+
+  "_comment": "===== PROJECT CONFIGURATION =====",
+  "partial_method": "top_k_abs_grads",
+
+  "_comment": "===== TOP K ABS VALUE GRADIENTS =====",
   "top_grads": 5,
+
+  "_comment": "===== THRESHOLD ABS VALUE GRADIENTS =====",
+  "grad_thresh": 0.01,
+
+  "_comment": "===== DISTRIBUTE STEP BY GRAD MAGNITUDE =====",
+
+  "_comment": "===== END PROJECT CONFIGURATION =====",
 
   "_comment": "===== EVAL CONFIGURATION =====",
   "num_eval_examples": 10000,
