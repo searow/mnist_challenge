@@ -1,4 +1,12 @@
 {
+  "_comment": "===== PARAMS TO BE PASSED TO PERTURB FUNCTION =====",
+  "tunable_params": [
+    "partial_method",
+    "top_grads",
+    "grad_thresh",
+    "k",
+    "a"
+  ],
   "_comment": "===== MODEL CONFIGURATION =====",
   "model_dir": "models/adv_trained",
 
@@ -10,6 +18,12 @@
   "num_checkpoint_steps": 300,
   "training_batch_size": 50,
 
+  "_comment": "===== METHOD OPTIONS TO IMPLEMENT =====",
+  "_comment": "top_k_abs_grads",
+  "_comment": "thresh_abs_grads",
+  "_comment": "distrib_grads",
+  "_comment": "clipped_pixels",
+
   "_comment": "===== PROJECT CONFIGURATION =====",
   "partial_method": "top_k_abs_grads",
 
@@ -20,6 +34,8 @@
   "grad_thresh": 0.01,
 
   "_comment": "===== DISTRIBUTE STEP BY GRAD MAGNITUDE =====",
+
+  "_comment": "===== CHECK FOR CLIPPED PIXELS  =====",
 
   "_comment": "===== END PROJECT CONFIGURATION =====",
 

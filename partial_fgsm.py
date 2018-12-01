@@ -1,23 +1,21 @@
-# Running new attacks:
-# 1. Make sure the base attack is runnable by running pgd_attack.py. This
-#    only generates the attack result npy file that has the images that
-#    should be evaluated with run_attack.py.
-# 2. Run this file which runs a default configuration in config.py.
-# 3. To run parametric version, run this file but specify flag parameters
-#    on the command line using --<flagname>=<flag>. See the flags we
-#    parse in the main function. They'll override anything that is in
-#    config.py but continue to use the ones not specified.
-# 4. Summary results (params + final accuracy) are saved in the attack
-#    directory specified in config file.
-
 # Modifying the iterative attack.
-# - Just look at the perturb method. It has the gradients in grad, the
-#   original images as a batch in x_nat, the correct classification in y,
-#   and top_k as a parameter (can add more if needed).
+# - See the _top_k_abs_grads method for an example of what to do.
+# - If you introduce some new controllable parameter, define it in
+#   config.json, then add it to the tunable_params list and it will be made
+#   available to you in params to use. Also add it to input_parser.py under
+#   the FLAGS.DEFINE_x section as the appropriate type so it can be
+#   parameterized via command line.
+# - Find the method you want to edit in the PartialFgsmAttack class.
+# - Edit that method as needed. You just need to access x (batched images),
+#   grad (the grad of loss wrt x), and params (any parameters defined in
+#   config.json).
 # - The method needs to return the perturbed image (x by default).
 # - Don't worry about bounds checking on the L-infinity distance. The clip
-#   function handles it all, so just perturb as much as you want at the 
+#   function handles it all, so just perturb as much as you want and the
 #   result will always be a valid image.
+
+# Running:
+# - Don't directly run this file. Run main.py.
 
 """
 Implementation of attack methods. Running this file as a program will
@@ -36,7 +34,7 @@ from run_attack import run_attack
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 class PartialFgsmAttack(LinfPGDAttack):
-  def perturb(self, x_nat, y, sess, top_k):
+  def perturb(self, x_nat, y, sess, params):
     """Given a set of examples (x_nat, y), returns a set of adversarial
        examples within epsilon of x_nat in l_infinity norm."""
     # x_nat is shape (batch_size, 784), 784 because the images are 28x28.
@@ -49,27 +47,77 @@ class PartialFgsmAttack(LinfPGDAttack):
       grad = sess.run(self.grad, feed_dict={self.model.x_input: x,
                                             self.model.y_input: y})
 
-      # TODO: there has to be a better way to do this.
-      # Get sorting for max absolute value of the gradient.
-      grad_abs = np.abs(grad)
-      ranking = np.argsort(grad_abs)
-      # Get kth largest (-top_k) index so we can create a boolean mask array
-      # and create a threshold mask for pixels that we should update.
-      top_idx = ranking[:, -top_k]
-      abs_thresholds = grad_abs[np.arange(grad_abs.shape[0]), top_idx]
-      abs_thresholds_full = np.repeat(abs_thresholds, repeats=grad_abs.shape[1])
-      abs_thresholds_full = abs_thresholds_full.reshape(grad_abs.shape)
-      update_mask = grad_abs >= abs_thresholds_full
-      # Only choose the gradients that are in the top_k.
-      thresholded_grads = np.zeros_like(grad)
-      thresholded_grads[update_mask] = grad[update_mask]
-
-      x += self.a * np.sign(thresholded_grads)
+      # Runs the attack itself and perturbs the images in x.
+      x = self._run_attack(x, grad, params)
 
       x = np.clip(x, x_nat - self.epsilon, x_nat + self.epsilon) 
       x = np.clip(x, 0, 1) # ensure valid pixel range
 
     return x
+
+  def _run_attack(self, x, grad, params):
+    # Dispatches to the desired attack type to run.
+    if params['partial_method'] == 'top_k_abs_grads':
+      return self._top_k_abs_grads(x, grad, params)
+    elif params['partial_method'] == 'thresh_abs_grads':
+      return self._thresh_abs_grads(x, grad, params)
+    elif params['partial_method'] == 'distrib_grads':
+      return self._distrib_grads(x, grad, params)
+    elif params['partial_method'] == 'clipped_pixels':
+      return self._clipped_pixels(x, grad, params)
+    else:
+      err = 'Method not implemented: {]'.format(params['partial_method'])
+      raise RuntimeError(err)
+
+  def _top_k_abs_grads(self, x, grad, params):
+    top_k = params['top_grads']
+    # TODO: there has to be a better way to do this.
+    # Get sorting for max absolute value of the gradient.
+    grad_abs = np.abs(grad)
+    ranking = np.argsort(grad_abs)
+    # Get kth largest (-top_k) index so we can create a boolean mask array
+    # and create a threshold mask for pixels that we should update.
+    top_idx = ranking[:, -top_k]
+    abs_thresholds = grad_abs[np.arange(grad_abs.shape[0]), top_idx]
+    abs_thresholds_full = np.repeat(abs_thresholds, repeats=grad_abs.shape[1])
+    abs_thresholds_full = abs_thresholds_full.reshape(grad_abs.shape)
+    update_mask = grad_abs >= abs_thresholds_full
+    # Only choose the gradients that are in the top_k.
+    thresholded_grads = np.zeros_like(grad)
+    thresholded_grads[update_mask] = grad[update_mask]
+
+    x += params['a'] * np.sign(thresholded_grads)
+    return x
+
+  def _thresh_abs_grads(self, x, grad, params):
+    # TODO: implement me.
+    # This method will change x the number of times k defined in config.json.
+    # x = image in batch form, shape (batch_size, flattened image size)
+    # grad = gradient of loss wrt x, shape (batch_size, flattened image size)
+    # params = dictionary of parameters, where the keys are defined in
+    #          config.json under tunable params and the values are the values
+    #          actually defined in config.json under the corresponding key.
+    raise RuntimeError('Not implemented yet')
+
+  def _distrib_grads(self, x, grad, params):
+    # TODO: implement me.
+    # This method will change x the number of times k defined in config.json.
+    # x = image in batch form, shape (batch_size, flattened image size)
+    # grad = gradient of loss wrt x, shape (batch_size, flattened image size)
+    # params = dictionary of parameters, where the keys are defined in
+    #          config.json under tunable params and the values are the values
+    #          actually defined in config.json under the corresponding key.
+    raise RuntimeError('Not implemented yet')
+
+  def _clipped_pixels(self, x, grad, params):
+    # TODO: implement me.
+    # This method will change x the number of times k defined in config.json.
+    # x = image in batch form, shape (batch_size, flattened image size)
+    # grad = gradient of loss wrt x, shape (batch_size, flattened image size)
+    # params = dictionary of parameters, where the keys are defined in
+    #          config.json under tunable params and the values are the values
+    #          actually defined in config.json under the corresponding key.
+    raise RuntimeError('Not implemented yet')
 
 
 if __name__ == '__main__':
