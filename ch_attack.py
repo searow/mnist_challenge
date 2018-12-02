@@ -14,25 +14,60 @@ from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.python.platform import app
 from tensorflow.python.platform import flags
 from ch_model_interface import MadryMNIST
-from cleverhans.utils_tf import model_eval
 from cleverhans.attacks import FastGradientMethod
 from cleverhans.attacks import BasicIterativeMethod
 from cleverhans.utils_mnist import data_mnist
 
+import sys as _sys
 import input_parser
 import pathlib
+import math
+import numpy as np
+from cleverhans.utils import _ArgsWrapper
 
 FLAGS = flags.FLAGS
 
-# Parses the config.json, FLAGS, and overrides.
-parser = input_parser.Parser()
+def get_examples(sess, x, y, adv_x, X_test=None, Y_test=None, 
+                  feed=None, args=None):
+  args = _ArgsWrapper(args or {})
+  adv_x_list = np.array([])
 
-# Create output path directory.
-pathlib.Path(parser.save_dir).mkdir(parents=True, exist_ok=True)
-import pdb
-pdb.set_trace()
+  with sess.as_default():
+    nb_batches = int(math.ceil(float(len(X_test)) / args.batch_size))
+    assert nb_batches * args.batch_size >= len(X_test)
 
-def main(argv):
+    X_cur = np.zeros((args.batch_size,) + X_test.shape[1:],
+                     dtype=X_test.dtype)
+    for batch in range(nb_batches):
+      if batch % 100 == 0 and batch > 0:
+        _logger.debug("Batch " + str(batch))
+
+      # Must not use the `batch_indices` function here, because it
+      # repeats some examples.
+      # It's acceptable to repeat during training, but not eval.
+      start = batch * args.batch_size
+      end = min(len(X_test), start + args.batch_size)
+
+      # The last batch may be smaller than all others. This should not
+      # affect the accuarcy disproportionately.
+      cur_batch_size = end - start
+      X_cur[:cur_batch_size] = X_test[start:end]
+      feed_dict = {x: X_cur}
+      if feed is not None:
+        feed_dict.update(feed)
+      batch_adv = adv_x.eval(feed_dict=feed_dict)
+
+      if(len(adv_x_list) == 0):
+        adv_x_list = np.copy(batch_adv)
+      else:
+        adv_x_list = np.concatenate(
+          (adv_x_list, batch_adv[:cur_batch_size]), axis=0)
+
+    assert end >= len(X_test)
+
+  return adv_x_list
+
+def get_attack_examples(argv, parser):
   checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint_dir)
 
   if checkpoint is None:
@@ -61,16 +96,19 @@ def main(argv):
 
   if FLAGS.attack_type == 'fgsm':
     fgsm = FastGradientMethod(model)
-    fgsm_params = {'eps': 0.3, 'clip_min': 0., 'clip_max': 1.}
+    fgsm_params = {'eps': parser.epsilon, 'clip_min': 0., 'clip_max': 1.}
     adv_x = fgsm.generate(x_image, **fgsm_params)
   elif FLAGS.attack_type == 'bim':
     bim = BasicIterativeMethod(model)
-    bim_params = {'eps': 0.3, 'clip_min': 0., 'clip_max': 1.,
+    bim_params = {'eps': tf.cast(parser.epsilon, tf.float32), 
+                  'clip_min': 0., 
+                  'clip_max': 1.,
                   'nb_iter': 50,
                   'eps_iter': .01}
     adv_x = bim.generate(x_image, **bim_params)
   else:
     raise ValueError(FLAGS.attack_type)
+
   preds_adv = model.get_probs(adv_x)
 
   saver = tf.train.Saver()
@@ -78,19 +116,15 @@ def main(argv):
   with tf.Session() as sess:
     # Restore the checkpoint
     saver.restore(sess, checkpoint)
-
-    # Evaluate the accuracy of the MNIST model on adversarial examples
     eval_par = {'batch_size': FLAGS.batch_size}
-    t1 = time.time()
-    acc = model_eval(
-        sess, x_image, y, preds_adv, X_test, Y_test, args=eval_par)
-    t2 = time.time()
-    print("Took", t2 - t1, "seconds")
-    print('Test accuracy on adversarial examples: %0.4f\n' % acc)
 
+    adv_x_list = \
+      get_examples(sess, x_image, y, adv_x, X_test, Y_test, args=eval_par)
 
-if __name__ == '__main__':
+  adv_x_list = np.squeeze(np.reshape(adv_x_list, (10000,28*28,1)))
+  return adv_x_list
 
+def ch_attack(parser):
   dirs = ['models', 'adv_trained']
   default_checkpoint_dir = os.path.join(*dirs)
 
@@ -99,8 +133,21 @@ if __name__ == '__main__':
       'label_smooth', 0.1, ("Amount to subtract from correct label "
                             "and distribute among other labels"))
   flags.DEFINE_string(
-      'attack_type', 'fgsm', ("Attack type: 'fgsm'->fast gradient sign"
+      'attack_type', parser.params['partial_method'], 
+      ("Attack type: 'fgsm'->fast gradient sign"
                               "method, 'bim'->'basic iterative method'"))
   flags.DEFINE_string('checkpoint_dir', default_checkpoint_dir,
                       'Checkpoint directory to load')
-  app.run(main)
+
+  argv = flags.FLAGS(_sys.argv, known_only=True)
+  return get_attack_examples(argv, parser)
+
+if __name__ == '__main__':
+  # Parses the config.json, FLAGS, and overrides.
+  parser = input_parser.Parser()
+
+  # Create output path directory.
+  pathlib.Path(parser.save_dir).mkdir(parents=True, exist_ok=True)
+
+  parser.params['partial_method'] = 'fgsm'
+  print(ch_attack(parser).shape)
