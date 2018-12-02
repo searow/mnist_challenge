@@ -70,11 +70,6 @@ def partial_attack(parser):
     x_adv.append(x_batch_adv)
   x_adv = np.concatenate(x_adv, axis=0)
 
-  # Save the attacks if necessary.
-  if not parser.delete_attacks:
-    print('Saving: {}'.format(parser.adv_path))
-    np.save(parser.adv_path, x_adv)
-
   return x_adv
 
 if __name__ == '__main__':
@@ -94,6 +89,11 @@ if __name__ == '__main__':
     x_adv = ch_attack.ch_attack(parser)
   else:
     x_adv = partial_attack(parser)
+
+  # Save the attacks if necessary.
+  if not parser.delete_attacks:
+    print('Saving: {}'.format(parser.adv_path))
+    np.save(parser.adv_path, x_adv)
   
   # Reset tensorflow. Important otherwise the eval won't run properly!
   tf.Session().close()

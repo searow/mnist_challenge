@@ -115,7 +115,8 @@ def get_attack_examples(argv, parser):
                   'clip_max': 1.,
                   'nb_iter': parser.params['k'],
                   'eps_iter': parser.params['a'],
-                  'ord': np.inf}
+                  'ord': np.inf,
+                  'rand_init': parser.random_start}
     adv_x = pgd.generate(x_image, **pgd_params)
   elif FLAGS.attack_type == 'moment':
     mmt = MomentumIterativeMethod(model)
