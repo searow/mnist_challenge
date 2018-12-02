@@ -22,10 +22,11 @@
   "_comment": "top_k_abs_grads",
   "_comment": "thresh_abs_grads",
   "_comment": "distrib_grads",
+  "_comment": "top_k_distrib_grads",
   "_comment": "clipped_pixels",
 
   "_comment": "===== PROJECT CONFIGURATION =====",
-  "partial_method": "top_k_abs_grads",
+  "partial_method": "top_k_distrib_grads",
 
   "_comment": "===== TOP K ABS VALUE GRADIENTS =====",
   "top_grads": 5,
@@ -34,6 +35,8 @@
   "grad_thresh": 0.01,
 
   "_comment": "===== DISTRIBUTE STEP BY GRAD MAGNITUDE =====",
+
+  "_comment": "===== TOP K DISTRIB GRAD =====",
 
   "_comment": "===== CHECK FOR CLIPPED PIXELS  =====",
 

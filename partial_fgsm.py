@@ -31,6 +31,8 @@ import numpy as np
 from pgd_attack import LinfPGDAttack
 from run_attack import run_attack
 
+from sklearn import preprocessing
+
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 class PartialFgsmAttack(LinfPGDAttack):
@@ -65,11 +67,19 @@ class PartialFgsmAttack(LinfPGDAttack):
       return self._distrib_grads(x, grad, params)
     elif params['partial_method'] == 'clipped_pixels':
       return self._clipped_pixels(x, grad, params)
+    elif params['partial_method'] == 'top_k_distrib_grads':
+      return self._top_k_distrib_grads(x, grad, params)
     else:
       err = 'Method not implemented: {]'.format(params['partial_method'])
       raise RuntimeError(err)
 
   def _top_k_abs_grads(self, x, grad, params):
+    # This method will change the top k gradient values for x.
+    # x = image in batch form, shape (batch_size, flattened image size)
+    # grad = gradient of loss wrt x, shape (batch_size, flattened image size)
+    # params = dictionary of parameters, where the keys are defined in
+    #          config.json under tunable params and the values are the values
+    #          actually defined in config.json under the corresponding key.
     top_k = params['top_grads']
     # TODO: there has to be a better way to do this.
     # Get sorting for max absolute value of the gradient.
@@ -90,24 +100,64 @@ class PartialFgsmAttack(LinfPGDAttack):
     return x
 
   def _thresh_abs_grads(self, x, grad, params):
-    # TODO: implement me.
-    # This method will change x the number of times k defined in config.json.
+    # This method will change x if its gradient exceeds grad_thresh defined in config.json.
     # x = image in batch form, shape (batch_size, flattened image size)
     # grad = gradient of loss wrt x, shape (batch_size, flattened image size)
     # params = dictionary of parameters, where the keys are defined in
     #          config.json under tunable params and the values are the values
     #          actually defined in config.json under the corresponding key.
-    raise RuntimeError('Not implemented yet')
+    # Take the absolute values of the gradient values
+    grad_abs = np.abs(grad)
+    # Create a mask for all absolute gradient values >= grad_thresh set to 1 and everything else set to 0
+    mask = grad_abs >= params['grad_thresh']
+    thresholded_grads = np.zeros_like(grad)
+    thresholded_grads[mask] = grad[mask]
+    # Update x for pixels whose gradient is >= grad_thresh
+    x += params['a'] * np.sign(thresholded_grads)
+    return x
 
   def _distrib_grads(self, x, grad, params):
-    # TODO: implement me.
-    # This method will change x the number of times k defined in config.json.
+    # This method will change x based on the distribution of its gradient.
     # x = image in batch form, shape (batch_size, flattened image size)
     # grad = gradient of loss wrt x, shape (batch_size, flattened image size)
     # params = dictionary of parameters, where the keys are defined in
     #          config.json under tunable params and the values are the values
     #          actually defined in config.json under the corresponding key.
-    raise RuntimeError('Not implemented yet')
+    # Normalize the gradient values
+    norm_grads = preprocessing.normalize(grad, norm='l2')
+    # Take steps of size 'a' distributed according to the normalized gradient
+    x += params['a'] * norm_grads
+    return x
+
+  def _top_k_distrib_grads(self, x, grad, params):
+    # This method will change the top k normalized gradient values of x.
+    # x = image in batch form, shape (batch_size, flattened image size)
+    # grad = gradient of loss wrt x, shape (batch_size, flattened image size)
+    # params = dictionary of parameters, where the keys are defined in
+    #          config.json under tunable params and the values are the values
+    #          actually defined in config.json under the corresponding key.
+    top_k = params['top_grads']
+    # TODO: there has to be a better way to do this.
+    # Normalize the gradient values
+    norm_grads = preprocessing.normalize(grad, norm='l2')
+    # Take steps of size 'a' distributed according to the normalized gradient
+    norm_grad_abs = np.abs(norm_grads)
+    # Get sorting for max absolute value of the gradient.
+    ranking = np.argsort(norm_grad_abs)
+    # Get kth largest (-top_k) index so we can create a boolean mask array
+    # and create a threshold mask for pixels that we should update.
+    top_idx = ranking[:, -top_k]
+    abs_thresholds = norm_grad_abs[np.arange(norm_grad_abs.shape[0]), top_idx]
+    abs_thresholds_full = np.repeat(abs_thresholds, repeats=norm_grad_abs.shape[1])
+    abs_thresholds_full = abs_thresholds_full.reshape(norm_grad_abs.shape)
+    update_mask = norm_grad_abs >= abs_thresholds_full
+    # Only choose the gradients that are in the top_k.
+    norm_thresholded_grads = np.zeros_like(grad)
+    norm_thresholded_grads[update_mask] = norm_grads[update_mask]
+
+    # Update top pixel values by step size 'a' times the normalized gradient value
+    x += params['a'] * norm_thresholded_grads
+    return x
 
   def _clipped_pixels(self, x, grad, params):
     # TODO: implement me.
@@ -121,6 +171,24 @@ class PartialFgsmAttack(LinfPGDAttack):
 
 
 if __name__ == '__main__':
+  import sys
+  import numpy as np
+  from model import Model
+  model = Model()
+  attack = PartialFgsmAttack(model,
+                             0,
+                             0,
+                             0,
+                             True,
+                             'xent')
+  x = np.array([[0.1, 0.2], [0.3, -1.0]])
+  grads = np.array([[0, 0.5], [0.5, 0.6]])
+  params = {'top_grads':1,
+            'a': 5}
+  attack._top_k_distrib_grads(x, grads, params)
+  sys.exit(0)
+
+
   import json
   import sys
   import math
