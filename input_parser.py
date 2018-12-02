@@ -45,6 +45,11 @@ class Parser(object):
     # Sets self.params for every tunable parameter that we defined.
     tunable = config['tunable_params']
     self.params = {}
+    # For some reason tensorflow updates the flags after this error is raised...
+    try:
+      flags.FLAGS
+    except:
+      pass
     for key in tunable:
       config_default = config[key]
       if flags[key].value:
