@@ -22,6 +22,7 @@ class Parser(object):
     flags.DEFINE_string('model_dir', None, 'Where the trained model is stored.')
     flags.DEFINE_integer('k', None, 'How many training steps to take')
     flags.DEFINE_float('a', None, 'Fixed training step size')
+    flags.DEFINE_float('decay_factor', None, 'Decay factor for momentum term')
     flags.DEFINE_string('loss_func', None, 'The loss function to lose (?)')
     flags.DEFINE_boolean('delete_attacks', False, 'Delete attack files')
     # Method-specific flags

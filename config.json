@@ -5,7 +5,8 @@
     "top_grads",
     "grad_thresh",
     "k",
-    "a"
+    "a",
+    "decay_factor"
   ],
   "_comment": "===== MODEL CONFIGURATION =====",
   "model_dir": "models/adv_trained",
@@ -24,6 +25,12 @@
   "_comment": "distrib_grads",
   "_comment": "top_k_distrib_grads",
   "_comment": "clipped_pixels",
+
+  "_comment": "===== CLEVERHANS ATTACKS =====",
+  "_comment": "fgsm",
+  "_comment": "bim",
+  "_comment": "pgd",
+  "_comment": "moment",
 
   "_comment": "===== PROJECT CONFIGURATION =====",
   "partial_method": "top_k_distrib_grads",
@@ -52,6 +59,7 @@
   "epsilon": 0.3,
   "k": 40,
   "a": 0.01,
+  "decay_factor":1.0,
   "random_start": true,
   "loss_func": "xent",
   "store_adv_path": "attack.npy",

@@ -90,7 +90,7 @@ if __name__ == '__main__':
     print('No model found')
     sys.exit()
 
-  if(parser.params['partial_method'] in {'fgsm', 'bim'}):
+  if(parser.params['partial_method'] in {'fgsm', 'bim', 'pgd', 'moment'}):
     x_adv = ch_attack.ch_attack(parser)
   else:
     x_adv = partial_attack(parser)

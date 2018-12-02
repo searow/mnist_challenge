@@ -16,6 +16,8 @@ from tensorflow.python.platform import flags
 from ch_model_interface import MadryMNIST
 from cleverhans.attacks import FastGradientMethod
 from cleverhans.attacks import BasicIterativeMethod
+from cleverhans.attacks import MadryEtAl
+from cleverhans.attacks import MomentumIterativeMethod
 from cleverhans.utils_mnist import data_mnist
 
 import sys as _sys
@@ -103,9 +105,28 @@ def get_attack_examples(argv, parser):
     bim_params = {'eps': tf.cast(parser.epsilon, tf.float32), 
                   'clip_min': 0., 
                   'clip_max': 1.,
-                  'nb_iter': 50,
-                  'eps_iter': .01}
+                  'nb_iter': parser.params['k'],
+                  'eps_iter': parser.params['a']}
     adv_x = bim.generate(x_image, **bim_params)
+  elif FLAGS.attack_type == 'pgd':
+    pgd = MadryEtAl(model)
+    pgd_params = {'eps': tf.cast(parser.epsilon, tf.float32), 
+                  'clip_min': 0., 
+                  'clip_max': 1.,
+                  'nb_iter': parser.params['k'],
+                  'eps_iter': parser.params['a'],
+                  'ord': np.inf}
+    adv_x = pgd.generate(x_image, **pgd_params)
+  elif FLAGS.attack_type == 'moment':
+    mmt = MomentumIterativeMethod(model)
+    mmt_params = {'eps': tf.cast(parser.epsilon, tf.float32), 
+                  'clip_min': 0., 
+                  'clip_max': 1.,
+                  'nb_iter': parser.params['k'],
+                  'eps_iter': parser.params['a'],
+                  'ord': np.inf,
+                  'decay_factor': 1.0}
+    adv_x = mmt.generate(x_image, **mmt_params)
   else:
     raise ValueError(FLAGS.attack_type)
 
