@@ -1,3 +1,4 @@
+import json
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -7,7 +8,13 @@ from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 from pandas.plotting import scatter_matrix
 
-readdir = 'attacks'
+readdir = 'temp'
+is_json_result = True
+# How many rows and how many cols for subplots. Should multiply to how many of x axis
+# types you need.
+subplot_shape = (3, 1)
+# fig_shape = (16, 10) # Good for 3x3
+fig_shape = (5, 10) # Good for 3x1
 
 cwd = os.getcwd()
 attack_dir = os.path.join(cwd, readdir)
@@ -15,17 +22,24 @@ files = os.listdir(attack_dir)
 
 files_full_path = [os.path.join(attack_dir, filename) for filename in files]
 
-file_data = []
-for filename in files_full_path:
-  with open(filename, 'r') as readfile:
-    test_data = readfile.read().split('\n')
-    output = {}
-    for data in test_data:
-      line = data.split(':')
-      key = line[0]
-      value = line[1]
-      output[key] = value
-    file_data.append(output)
+if is_json_result:
+  file_data = []
+  for filename in files_full_path:
+    with open(filename, 'r') as readfile:
+      test_data = json.load(readfile)
+      file_data.append(test_data)
+else:
+  file_data = []
+  for filename in files_full_path:
+    with open(filename, 'r') as readfile:
+      test_data = readfile.read().split('\n')
+      output = {}
+      for data in test_data:
+        line = data.split(':')
+        key = line[0]
+        value = line[1]
+        output[key] = value
+      file_data.append(output)
 
 k_values = set()
 a_values = set()
@@ -72,13 +86,13 @@ plt.show()
 
 # Overlaid line plots.
 colors = ['b', 'g', 'r', 'c', 'm', 'k']
-fig = plt.figure(figsize=(16,10))
+fig = plt.figure(figsize=fig_shape)
 for grad in range(top_grads_np.shape[0]):
   for a in range(a_np.shape[0]):
     acc = accuracies[:, a, grad]
     color = colors[a]
 
-    ax = fig.add_subplot(3, 3, grad + 1)
+    ax = fig.add_subplot(subplot_shape[0], subplot_shape[1], grad + 1)
     ax.plot(k_np, acc, color)
     ax.set_xlabel('Num steps')
     ax.set_ylabel('Accuracy')

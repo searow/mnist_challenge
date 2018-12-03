@@ -45,14 +45,18 @@ class PartialFgsmAttack(LinfPGDAttack):
     else:
       x = np.copy(x_nat)
 
-    params['x_plus_epsilon'] = np.clip(x_nat, x_nat, x_nat + self.epsilon)
-    params['x_minus_epsilon'] = np.clip(x_nat, x_nat - self.epsilon, x_nat)
+    # Lazily insert x+e and x-e for clipped_pixels. Do this because if we
+    # directly modify params, it'll get written in the summary file which
+    # is bad for json serialization.
+    lazy_params = params.copy()
+    lazy_params['x_plus_epsilon'] = np.clip(x_nat, x_nat, x_nat + self.epsilon)
+    lazy_params['x_minus_epsilon'] = np.clip(x_nat, x_nat - self.epsilon, x_nat)
     for i in range(self.k):
       grad = sess.run(self.grad, feed_dict={self.model.x_input: x,
                                             self.model.y_input: y})
 
       # Runs the attack itself and perturbs the images in x.
-      x = self._run_attack(x, grad, params)
+      x = self._run_attack(x, grad, lazy_params)
 
       x = np.clip(x, x_nat - self.epsilon, x_nat + self.epsilon) 
       x = np.clip(x, 0, 1) # ensure valid pixel range
