@@ -45,6 +45,8 @@ class PartialFgsmAttack(LinfPGDAttack):
     else:
       x = np.copy(x_nat)
 
+    params['x_plus_epsilon'] = np.clip(x_nat, x_nat, x_nat + self.epsilon)
+    params['x_minus_epsilon'] = np.clip(x_nat, x_nat - self.epsilon, x_nat)
     for i in range(self.k):
       grad = sess.run(self.grad, feed_dict={self.model.x_input: x,
                                             self.model.y_input: y})
@@ -160,14 +162,48 @@ class PartialFgsmAttack(LinfPGDAttack):
     return x
 
   def _clipped_pixels(self, x, grad, params):
-    # TODO: implement me.
     # This method will change x the number of times k defined in config.json.
     # x = image in batch form, shape (batch_size, flattened image size)
     # grad = gradient of loss wrt x, shape (batch_size, flattened image size)
     # params = dictionary of parameters, where the keys are defined in
     #          config.json under tunable params and the values are the values
     #          actually defined in config.json under the corresponding key.
-    raise RuntimeError('Not implemented yet')
+    '''
+    x = np.array([[0.8, 0.5, 0.2, 0.7],[0.2, 0.3, 0.8, 0.5]])
+    grad = np.array([[0.1, 0.2,-0.1, 0.3],[0.5,-0.2, 0.5,-0.5]])
+    params['x_plus_epsilon'] = np.array([[0.8, 0.8, 0.8, 0.8],[0.8, 0.8, 0.8, 0.8]])
+    params['x_minus_epsilon'] = np.array([[0.2, 0.2, 0.2, 0.2],[0.2, 0.2, 0.2, 0.2]])
+    '''
+
+    x_plus_epsilon = params['x_plus_epsilon']
+    x_minus_epsilon = params['x_minus_epsilon']
+    x_plus_mask = x < x_plus_epsilon
+    x_minus_mask = x > x_minus_epsilon
+    grad_pos_mask = grad > 0
+    grad_neg_mask = grad < 0
+    valid_x_plus = np.logical_and(x_plus_mask, grad_pos_mask)
+    valid_x_minus = np.logical_and(x_minus_mask, grad_neg_mask)
+    valid_mask = np.logical_or(valid_x_plus, valid_x_minus)
+
+    top_k = params['top_grads']
+    # TODO: there has to be a better way to do this.
+    # Get sorting for max absolute value of the gradient.
+    grad_abs = np.abs(grad)
+    grad_abs[np.logical_not(valid_mask)] = 0
+    ranking = np.argsort(grad_abs)
+    # Get kth largest (-top_k) index so we can create a boolean mask array
+    # and create a threshold mask for pixels that we should update.
+    top_idx = ranking[:, -top_k]
+    abs_thresholds = grad_abs[np.arange(grad_abs.shape[0]), top_idx]
+    abs_thresholds_full = np.repeat(abs_thresholds, repeats=grad_abs.shape[1])
+    abs_thresholds_full = abs_thresholds_full.reshape(grad_abs.shape)
+    update_mask = grad_abs >= abs_thresholds_full
+    # Only choose the gradients that are in the top_k.
+    thresholded_grads = np.zeros_like(grad)
+    thresholded_grads[update_mask] = grad[update_mask]
+
+    x += params['a'] * np.sign(thresholded_grads)
+    return x
 
 
 if __name__ == '__main__':
