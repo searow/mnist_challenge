@@ -19,9 +19,6 @@ true_labels = np.zeros_like(orig_labels)
 orig_images = np.reshape(orig_images, (-1, 28, 28))
 attack_images = np.reshape(attack_images, (-1, 28, 28))
 
-rand = randint(0, orig_images.shape[0])
-
-
 assert orig_images.shape[0] == attack_images.shape[0]
 
 for i in range(orig_images.shape[0]):
@@ -38,5 +35,8 @@ for i in range(orig_images.shape[0]):
     title = 'True: {}, Orig: {}, Attack: {}'.format(true_label, orig_label, attack_label)
 
     fig.suptitle(title)
+
+    ax_orig.axis('off')
+    ax_attack.axis('off')
 
     pyplot.show()
