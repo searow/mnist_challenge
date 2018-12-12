@@ -30,6 +30,7 @@ class Parser(object):
                                                 ' that should be run')
     flags.DEFINE_float('grad_thresh', None, '')
     flags.DEFINE_integer('top_grads', None, 'Number of top grads to threshold')
+    flags.DEFINE_integer('random_inits', None, 'How man inits to do')
     FLAGS = tf.app.flags.FLAGS
     return FLAGS
 

@@ -6,7 +6,8 @@
     "grad_thresh",
     "k",
     "a",
-    "decay_factor"
+    "decay_factor",
+    "random_inits"
   ],
   "_comment": "===== MODEL CONFIGURATION =====",
   "model_dir": "models/adv_trained",
@@ -33,10 +34,10 @@
   "_comment": "moment",
 
   "_comment": "===== PROJECT CONFIGURATION =====",
-  "partial_method": "top_k_distrib_grads",
+  "partial_method": "pgd",
 
   "_comment": "===== TOP K ABS VALUE GRADIENTS =====",
-  "top_grads": 5,
+  "top_grads": 128,
 
   "_comment": "===== THRESHOLD ABS VALUE GRADIENTS =====",
   "grad_thresh": 0.01,
@@ -53,15 +54,16 @@
   "num_eval_examples": 10000,
   "eval_batch_size": 200,
   "eval_on_cpu": true,
-  "delete_attacks": true,
+  "delete_attacks": false,
 
   "_comment": "=====ADVERSARIAL EXAMPLES CONFIGURATION=====",
   "epsilon": 0.3,
-  "k": 40,
+  "k": 100,
   "a": 0.01,
   "decay_factor":1.0,
   "random_start": true,
+  "random_inits": 50,
   "loss_func": "xent",
-  "store_adv_path": "attack.npy",
+  "store_adv_path": "curr_attack.npy",
   "save_dir": "attacks"
 }

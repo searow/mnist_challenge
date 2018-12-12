@@ -67,7 +67,7 @@ def run_attack(checkpoint, x_adv, epsilon, save_path=''):
   if save_path:
     save_file = save_path + '-pred.npy'
     np.save(save_file, y_pred)
-  return accuracy
+  return accuracy, y_pred == mnist.test.labels
 
 if __name__ == '__main__':
   import json
@@ -91,4 +91,5 @@ if __name__ == '__main__':
                                                               np.amin(x_adv),
                                                               np.amax(x_adv)))
   else:
-    print("Accuracy = {}".format(run_attack(checkpoint, x_adv, config['epsilon'])))
+    accuracy, ypred = run_attack(checkpoint, x_adv, config['epsilon'])
+    print("Accuracy = {}".format(accuracy))
