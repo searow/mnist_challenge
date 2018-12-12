@@ -45,6 +45,8 @@ class PartialFgsmAttack(LinfPGDAttack):
     else:
       x = np.copy(x_nat)
 
+    self.heatmap = np.zeros_like(x_nat)
+
     # Lazily insert x+e and x-e for clipped_pixels. Do this because if we
     # directly modify params, it'll get written in the summary file which
     # is bad for json serialization.
@@ -101,6 +103,8 @@ class PartialFgsmAttack(LinfPGDAttack):
     # Only choose the gradients that are in the top_k.
     thresholded_grads = np.zeros_like(grad)
     thresholded_grads[update_mask] = grad[update_mask]
+
+    self.heatmap += update_mask
 
     x += params['a'] * np.sign(thresholded_grads)
     return x
@@ -163,6 +167,9 @@ class PartialFgsmAttack(LinfPGDAttack):
 
     # Update top pixel values by step size 'a' times the normalized gradient value
     x += params['a'] * norm_thresholded_grads
+
+    self.heatmap += update_mask
+
     return x
 
   def _clipped_pixels(self, x, grad, params):
@@ -207,6 +214,9 @@ class PartialFgsmAttack(LinfPGDAttack):
     thresholded_grads[update_mask] = grad[update_mask]
 
     x += params['a'] * np.sign(thresholded_grads)
+
+    self.heatmap += update_mask
+
     return x
 
 

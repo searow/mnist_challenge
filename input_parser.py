@@ -96,3 +96,6 @@ class Parser(object):
     self.summary_path = '{}/{}-{}-summary.txt'.format(self.save_dir,
                                                       self.timestamp,
                                                       full_items)
+    self.heatmap_path = '{}/{}-{}-heatmap.txt'.format(self.save_dir,
+                                                      self.timestamp,
+                                                      full_items)

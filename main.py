@@ -53,6 +53,7 @@ def partial_attack(parser):
   num_batches = parser.num_batches
 
   x_adv = [] # adv accumulator
+  heatmaps = []
 
   print('Attacking: {}'.format(parser.adv_path))
 
@@ -68,9 +69,12 @@ def partial_attack(parser):
     x_batch_adv = attack.perturb(x_batch, y_batch, sess, parser.params)
 
     x_adv.append(x_batch_adv)
-  x_adv = np.concatenate(x_adv, axis=0)
 
-  return x_adv
+    heatmaps.append(attack.heatmap)
+  x_adv = np.concatenate(x_adv, axis=0)
+  heatmap = np.concatenate(heatmaps, axis=0)
+
+  return x_adv, heatmap
 
 if __name__ == '__main__':
   # Parses the config.json, FLAGS, and overrides.
@@ -85,16 +89,20 @@ if __name__ == '__main__':
     print('No model found')
     sys.exit()
 
+  heatmap = None
+
   if(parser.params['partial_method'] in {'fgsm', 'bim', 'pgd', 'moment'}):
     x_adv = ch_attack.ch_attack(parser)
   else:
-    x_adv = partial_attack(parser)
+    x_adv, heatmap = partial_attack(parser)
 
   # Save the attacks if necessary.
   if not parser.delete_attacks:
     print('Saving: {}'.format(parser.adv_path))
     np.save(parser.adv_path, x_adv)
-  
+    if not heatmap is None:
+      np.save(parser.heatmap_path, heatmap)
+
   # Reset tensorflow. Important otherwise the eval won't run properly!
   tf.Session().close()
   tf.reset_default_graph()
