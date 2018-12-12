@@ -147,19 +147,20 @@ def get_attack_examples(argv, parser):
   return adv_x_list
 
 def ch_attack(parser):
-  dirs = ['models', 'adv_trained']
+  dirs = ['models', 'secret']
   default_checkpoint_dir = os.path.join(*dirs)
 
-  flags.DEFINE_integer('batch_size', 128, "batch size")
-  flags.DEFINE_float(
-      'label_smooth', 0.1, ("Amount to subtract from correct label "
-                            "and distribute among other labels"))
-  flags.DEFINE_string(
-      'attack_type', parser.params['partial_method'], 
-      ("Attack type: 'fgsm'->fast gradient sign"
-                              "method, 'bim'->'basic iterative method'"))
-  flags.DEFINE_string('checkpoint_dir', default_checkpoint_dir,
-                      'Checkpoint directory to load')
+  if('batch_size' not in tf.flags.FLAGS.__flags):
+    flags.DEFINE_integer('batch_size', 128, "batch size")
+    flags.DEFINE_float(
+        'label_smooth', 0.1, ("Amount to subtract from correct label "
+                              "and distribute among other labels"))
+    flags.DEFINE_string(
+        'attack_type', parser.params['partial_method'],
+        ("Attack type: 'fgsm'->fast gradient sign"
+                                "method, 'bim'->'basic iterative method'"))
+    flags.DEFINE_string('checkpoint_dir', default_checkpoint_dir,
+                        'Checkpoint directory to load')
 
   argv = flags.FLAGS(_sys.argv, known_only=True)
   return get_attack_examples(argv, parser)
