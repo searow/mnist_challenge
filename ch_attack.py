@@ -147,7 +147,7 @@ def get_attack_examples(argv, parser):
   return adv_x_list
 
 def ch_attack(parser):
-  dirs = ['models', 'secret']
+  dirs = ['models', 'adv_trained']
   default_checkpoint_dir = os.path.join(*dirs)
 
   if('batch_size' not in tf.flags.FLAGS.__flags):
