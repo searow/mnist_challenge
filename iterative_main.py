@@ -82,6 +82,7 @@ if __name__ == '__main__':
   fin_x_adv = mnist.test.images
   x_adv = mnist.test.images
   correct_mask = np.ones((10000,)) == 1
+  accuracy_iters = []
 
   for i in range(parser.params['random_inits']):
 
@@ -113,6 +114,7 @@ if __name__ == '__main__':
                                         parser.epsilon,
                                         eval_results_path)
     print('Accuracy: {}'.format(accuracy))
+    accuracy_iters.append(accuracy)
 
     # Reset tensorflow. Important otherwise the eval won't run properly!
     tf.Session().close()
@@ -122,4 +124,5 @@ if __name__ == '__main__':
   with open(parser.summary_path, 'w') as writefile:
     summary = parser.get_summary_data()
     summary['accuracy'] = accuracy
+    summary['accuracy_iters'] = accuracy_iters
     json.dump(summary, writefile, indent=4)
