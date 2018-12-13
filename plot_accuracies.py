@@ -4,8 +4,8 @@ import pdb
 import json
 from random import randint
 
-pgd_attack_file = "attacks/attacks/20181212-012544-0.01-1.0-0.3-0.01-100-adv_trained-pgd-51-128-summary.txt"
-clipped_attack_file = "attacks/attacks/20181212-012544-0.01-1.0-0.3-0.01-100-adv_trained-pgd-51-128-summary.txt"
+pgd_attack_file = "attacks/20181212-012544-0.01-1.0-0.3-0.01-100-adv_trained-pgd-51-128-summary.txt"
+clipped_attack_file = "attacks/20181212-012205-0.04-1.0-0.3-0.01-128-adv_trained-clipped_pixels-51-128-summary.txt"
 
 with open(pgd_attack_file) as f:
     pgd_attack = json.load(f)
@@ -22,7 +22,11 @@ pyplot.plot(list(range(iterations)), pgd_acc, clp_acc)
 
 title = 'PGD and Clipped Pixels Accuracies vs Random Restart Iteration'
 
-fig.suptitle(title)
+#fig.suptitle(title)
+
+pyplot.xlabel('Iterations')
+pyplot.ylabel('Accuracy')
+pyplot.legend(['PGD', 'Clipped Pixels'])
 
 # Show plot
 #pyplot.show()
